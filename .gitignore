@@ -1,0 +1,7 @@
+/data
+/.vscode
+/.config
+/logs
+.env
+*.pyo
+*.pyc
