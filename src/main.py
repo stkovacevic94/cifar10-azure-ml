@@ -1,4 +1,4 @@
-from model import ImageClassifier
+from model import ImageClassifier, NeuralNetwork
 from data import CIFAR10DataModule
 from logger import ImagePredictionLogger
 from pytorch_lightning import Trainer, seed_everything
@@ -14,24 +14,33 @@ def main(hparams):
     if hparams.seed is not None:
         seed_everything(hparams.seed, workers=True)
         deterministic = True
-        
+
     datamodule = CIFAR10DataModule(hparams.data_path, hparams.batch_size)
     
-    model = ImageClassifier(hparams.lr)
+    model = NeuralNetwork()
+    system = ImageClassifier(hparams.lr, model)
     
     os.makedirs("./logs", exist_ok=True)
     wandb_logger = WandbLogger(group="Custom CNN", config=hparams, job_type='train', save_dir='./logs')
     wandb_logger.watch(model, log='all')
+    checkpoint_callback = ModelCheckpoint(
+        monitor='valid_loss',
+        filename='cifar10-{epoch:02d}-{valid_loss:.2f}',
+        save_top_k=3,
+        mode='min',
+    )
     trainer = Trainer(
             gpus=1, 
             fast_dev_run=False, 
             logger=wandb_logger, 
             max_epochs=hparams.max_epochs,
-            weights_summary='top',
+            track_grad_norm=2,
+            weights_summary='full',
+            callbacks=[checkpoint_callback],
             #callbacks=[ImagePredictionLogger(val_samples)],
             deterministic=deterministic)
 
-    trainer.fit(model, datamodule)
+    trainer.fit(system, datamodule)
     wandb.finish()
 
 def add_training_specific_args(parent_parser: argparse.ArgumentParser):
