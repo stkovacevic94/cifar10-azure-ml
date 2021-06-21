@@ -16,20 +16,20 @@ class InceptionBlock(nn.Module):
         )
         self.conv_3x3 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels_3x3, 1, padding="same"),
-            nn.Relu(),
+            nn.ReLU(),
             nn.Conv2d(out_channels_3x3, out_channels_3x3, 3, padding="same"),
-            nn.Relu()
+            nn.ReLU()
         )
         self.double_conv_3x3 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels_double_3x3, 3, padding="same"),
-            nn.Relu(),
+            nn.ReLU(),
             nn.Conv2d(out_channels_double_3x3, out_channels_double_3x3, 3, padding="same"),
-            nn.Relu()
+            nn.ReLU()
         )
         self.pooling_3x3 = nn.Sequential(
-            nn.MaxPool2d(3, padding="same"),
-            nn.Conv2d(in_channels, out_channels_pooling, padding="same"),
-            nn.Relu()
+            nn.MaxPool2d(3, stride=1, padding=1),
+            nn.Conv2d(in_channels, out_channels_pooling, 1, padding="same"),
+            nn.ReLU()
         )
 
         self.out_channels = out_channels_1x1 + out_channels_3x3 + out_channels_double_3x3 + out_channels_pooling
@@ -39,7 +39,7 @@ class InceptionBlock(nn.Module):
         option_3x3 = self.conv_3x3(X)
         option_5x5 = self.double_conv_3x3(X)
         option_pooling = self.pooling_3x3(X)
-        return torch.stack((option_1x1, option_3x3, option_5x5, option_pooling), dim=1)
+        return torch.cat((option_1x1, option_3x3, option_5x5, option_pooling), dim=1)
 
 class NeuralNetwork(nn.Module):
     def __init__(self):
@@ -51,7 +51,7 @@ class NeuralNetwork(nn.Module):
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(16, 32, 3),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(32),
             nn.ReLU()
         )
 
