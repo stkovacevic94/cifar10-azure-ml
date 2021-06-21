@@ -6,46 +6,95 @@ import argparse
 
 import pytorch_lightning as plt
 
+class InceptionBlock(nn.Module):
+    def __init__(self, in_channels, out_channels_1x1, out_channels_3x3, out_channels_double_3x3, out_channels_pooling):
+        super(InceptionBlock, self).__init__()
+
+        self.conv_1x1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels_1x1, 1, padding="same"),
+            nn.ReLU()
+        )
+        self.conv_3x3 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels_3x3, 1, padding="same"),
+            nn.Relu(),
+            nn.Conv2d(out_channels_3x3, out_channels_3x3, 3, padding="same"),
+            nn.Relu()
+        )
+        self.double_conv_3x3 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels_double_3x3, 3, padding="same"),
+            nn.Relu(),
+            nn.Conv2d(out_channels_double_3x3, out_channels_double_3x3, 3, padding="same"),
+            nn.Relu()
+        )
+        self.pooling_3x3 = nn.Sequential(
+            nn.MaxPool2d(3, padding="same"),
+            nn.Conv2d(in_channels, out_channels_pooling, padding="same"),
+            nn.Relu()
+        )
+
+        self.out_channels = out_channels_1x1 + out_channels_3x3 + out_channels_double_3x3 + out_channels_pooling
+
+    def forward(self, X):
+        option_1x1 = self.conv_1x1(X)
+        option_3x3 = self.conv_3x3(X)
+        option_5x5 = self.double_conv_3x3(X)
+        option_pooling = self.pooling_3x3(X)
+        return torch.stack((option_1x1, option_3x3, option_5x5, option_pooling), dim=1)
+
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super(NeuralNetwork, self).__init__()
 
-        self.conv_stack1 = nn.Sequential(
-            nn.Conv2d(3, 16, 5),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(3, 16, 3),
+            nn.ReLU()
         )
-        self.conv_stack2 = nn.Sequential(
+        self.conv2 = nn.Sequential(
             nn.Conv2d(16, 32, 3),
-            nn.ReLU(),
-            nn.BatchNorm2d(32),
-            #nn.Dropout(0.25),
-            nn.MaxPool2d(2, 2)
+            nn.BatchNorm2d(64),
+            nn.ReLU()
         )
-        self.conv_stack3 = nn.Sequential(
-            nn.Conv2d(32, 64, 3),
+
+        inception1 = InceptionBlock(32, 16, 16, 16, 16)
+        self.inception1 = nn.Sequential(
+            inception1,
+            nn.BatchNorm2d(inception1.out_channels)
+        )
+        inception2 = InceptionBlock(inception1.out_channels, 16, 64, 64, 16)
+        self.inception2 = nn.Sequential(
+            inception2,
+            nn.BatchNorm2d(inception2.out_channels)
+        )
+
+        inception3 = InceptionBlock(inception2.out_channels, 16, 32, 32, 16)
+        self.inception3 = nn.Sequential(
+            inception3,
+            nn.BatchNorm2d(inception3.out_channels)
+        )
+        inception4 = InceptionBlock(inception3.out_channels, 16, 16, 16, 16)
+        self.inception4 = nn.Sequential(
+            inception4,
+            nn.BatchNorm2d(inception4.out_channels)
+        )
+
+        self.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(inception4.out_channels*3*3, 10),
             nn.ReLU(),
-            nn.MaxPool2d(2, 2))
-        self.fc1 = nn.Sequential(
-            nn.Linear(64*2*2, 128),
-            nn.ReLU(),
-            nn.BatchNorm1d(128),
-            #nn.Dropout(0.5)
             )
-        self.fc2 = nn.Sequential(
-            nn.Linear(128, 64),
-            nn.ReLU(),
-        )
-        self.output = nn.Linear(64, 10)
 
     def forward(self, X):
-        X = self.conv_stack1(X)
-        X = self.conv_stack2(X)
-        X = self.conv_stack3(X)
+        X = self.conv1(X)
+        X = self.conv2(X)
+        X = F.max_pool2d(X, 2)
+        X = self.inception1(X)
+        X = self.inception2(X)
+        X = F.max_pool2d(X, 2)
+        X = self.inception3(X)
+        X = self.inception4(X)
+        X = F.avg_pool2d(X, 2)
         X = torch.flatten(X, 1)
-        X = self.fc1(X)
-        X = self.fc2(X)
-        logits = self.output(X)
+        logits = self.fc(X)
         return logits
 
 

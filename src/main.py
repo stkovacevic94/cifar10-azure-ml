@@ -31,7 +31,7 @@ def main(hparams):
     )
     trainer = Trainer(
             gpus=1, 
-            fast_dev_run=False, 
+            fast_dev_run=hparams.fast_dev_run, 
             logger=wandb_logger, 
             max_epochs=hparams.max_epochs,
             track_grad_norm=2,
@@ -46,6 +46,7 @@ def main(hparams):
 def add_training_specific_args(parent_parser: argparse.ArgumentParser):
     parser = parent_parser.add_argument_group("Training")
     parser.add_argument('--max_epochs', type=int, default=100, help='Number of epochs to train')
+    parser.add_argument('--fast_dev_run', action="store_true", help='Run 1 epoch for test')
     return parent_parser
 
 if __name__=='__main__':
