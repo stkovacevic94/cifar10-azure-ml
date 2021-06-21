@@ -18,20 +18,33 @@ class NeuralNetwork(nn.Module):
         self.conv_stack2 = nn.Sequential(
             nn.Conv2d(16, 32, 3),
             nn.ReLU(),
+            nn.BatchNorm2d(32),
+            #nn.Dropout(0.25),
             nn.MaxPool2d(2, 2)
         )
-        self.conv3 = nn.Conv2d(32, 64, 3)
+        self.conv_stack3 = nn.Sequential(
+            nn.Conv2d(32, 64, 3),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2))
         self.fc1 = nn.Sequential(
-            nn.Linear(64*4*4, 128),
-            nn.ReLU())
-        self.output = nn.Linear(128, 10)
+            nn.Linear(64*2*2, 128),
+            nn.ReLU(),
+            nn.BatchNorm1d(128),
+            #nn.Dropout(0.5)
+            )
+        self.fc2 = nn.Sequential(
+            nn.Linear(128, 64),
+            nn.ReLU(),
+        )
+        self.output = nn.Linear(64, 10)
 
     def forward(self, X):
         X = self.conv_stack1(X)
         X = self.conv_stack2(X)
-        X = self.conv3(X)
+        X = self.conv_stack3(X)
         X = torch.flatten(X, 1)
         X = self.fc1(X)
+        X = self.fc2(X)
         logits = self.output(X)
         return logits
 
