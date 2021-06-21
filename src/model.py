@@ -81,7 +81,18 @@ class NeuralNetwork(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(inception4.out_channels*3*3, 10),
             nn.ReLU(),
-            )
+        )
+
+        self.aux_conv = nn.Sequential(
+            nn.Conv2d(inception2.out_channels, 92, 3),
+            nn.ReLU()
+        )
+        self.aux_fc1 = nn.Sequential(
+            nn.Linear(92*2*2, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+        self.aux_out = nn.Linear(128, 10)
 
     def forward(self, X):
         X = self.conv1(X)
@@ -89,13 +100,19 @@ class NeuralNetwork(nn.Module):
         X = F.max_pool2d(X, 2)
         X = self.inception1(X)
         X = self.inception2(X)
+
+        A = F.avg_pool2d(X, 3)
+        A = self.aux_conv(A)
+        A = self.aux_fc1(torch.flatten(A, 1))
+        aux_logits = self.aux_out(A) 
+
         X = F.max_pool2d(X, 2)
         X = self.inception3(X)
         X = self.inception4(X)
         X = F.avg_pool2d(X, 2)
         X = torch.flatten(X, 1)
         logits = self.fc(X)
-        return logits
+        return logits, aux_logits
 
 
 class ImageClassifier(plt.LightningModule):
@@ -107,26 +124,44 @@ class ImageClassifier(plt.LightningModule):
         self.save_hyperparameters("lr")
 
         self.train_acc = torchmetrics.Accuracy()
+        self.train_aux_acc = torchmetrics.Accuracy()
         self.val_acc = torchmetrics.Accuracy()
+        self.val_aux_acc = torchmetrics.Accuracy()
 
     def forward(self, X):
         return self.model(X)
 
     def training_step(self, batch, batch_idx):
         X, y = batch
-        logits = self(X)
+        logits, aux_logits = self(X)
         loss = F.cross_entropy(logits, y)
+        aux_loss = F.cross_entropy(aux_logits, y)
         self.train_acc(F.softmax(logits, dim=1), y)
-        self.log_dict({"train_loss": loss, "train_acc": self.train_acc}, on_step=True, on_epoch=True)
-        return loss
+        self.train_aux_acc(F.softmax(aux_logits, dim=1), y)
+        log_metrics = {
+            "train_loss": loss,
+            "train_aux_loss": aux_loss, 
+            "train_acc": self.train_acc,
+            "train_aux_acc": self.train_aux_acc
+        }
+        self.log_dict(log_metrics, on_step=True, on_epoch=True)
+        return 0.5*loss+0.5*aux_loss
 
     def validation_step(self, batch, batch_idx):
         X, y = batch
-        logits = self(X)
+        logits, aux_logits = self(X)
         loss = F.cross_entropy(logits, y)
+        aux_loss = F.cross_entropy(aux_logits, y)
         self.val_acc(F.softmax(logits, dim=1), y)
-        self.log_dict({"valid_loss": loss, "valid_acc": self.val_acc})
-        return loss
+        self.val_aux_acc(F.softmax(aux_logits, dim=1), y)
+        log_metrics = {
+            "valid_loss": loss,
+            "valid_aux_loss": aux_loss, 
+            "valid_acc": self.val_acc,
+            "valid_aux_acc": self.val_aux_acc
+        }
+        self.log_dict(log_metrics)
+        return 0.5*loss+0.5*aux_loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
