@@ -21,7 +21,7 @@ def main(hparams):
     system = ImageClassifier(hparams.lr, model)
     
     os.makedirs("./logs", exist_ok=True)
-    wandb_logger = WandbLogger(group="Custom CNN", config=hparams, job_type='train', save_dir='./logs')
+    wandb_logger = WandbLogger(group="Custom Lite Inception", config=hparams, job_type='train', save_dir='./logs')
     wandb_logger.watch(model, log='all')
     checkpoint_callback = ModelCheckpoint(
         monitor='valid_loss',
