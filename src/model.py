@@ -55,7 +55,7 @@ class ImageClassifier(plt.LightningModule):
         logits = self(X)
         loss = F.cross_entropy(logits, y)
         self.train_acc(F.softmax(logits, dim=1), y)
-        self.log_dict({"loss/train": loss, "acc/train": self.train_acc}, on_step=True, on_epoch=True)
+        self.log_dict({"train_loss": loss, "train_acc": self.train_acc}, on_step=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
