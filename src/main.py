@@ -1,4 +1,4 @@
-from model import ImageClassifier, NeuralNetwork
+from model import LiteInceptionNetwork, NeuralNetwork
 from data import CIFAR10DataModule
 from logger import ImagePredictionLogger
 from pytorch_lightning import Trainer, seed_everything
@@ -18,7 +18,7 @@ def main(hparams):
     datamodule = CIFAR10DataModule(hparams.data_path, hparams.batch_size)
     
     model = NeuralNetwork()
-    system = ImageClassifier(hparams.lr, model)
+    system = LiteInceptionNetwork(hparams.lr, model)
     
     os.makedirs("./logs", exist_ok=True)
     wandb_logger = WandbLogger(group="Custom Lite Inception", config=hparams, job_type='train', save_dir='./logs')
@@ -58,7 +58,7 @@ if __name__=='__main__':
     # TRAINER level args
     parser = add_training_specific_args(parser)
     # MODEL level args
-    parser = ImageClassifier.add_model_specific_args(parser)
+    parser = LiteInceptionNetwork.add_model_specific_args(parser)
     # DATA level args
     parser = CIFAR10DataModule.add_data_specific_args(parser)
 

@@ -1,4 +1,4 @@
-from albumentations.augmentations.transforms import HorizontalFlip, RandomBrightness, VerticalFlip
+from albumentations.augmentations.transforms import GaussianBlur, HorizontalFlip, RandomBrightness, VerticalFlip
 import pytorch_lightning as plt
 
 from torch.utils.data import DataLoader
@@ -37,6 +37,7 @@ class CIFAR10DataModule(plt.LightningDataModule):
 
         self.transform = A.Compose([
             A.HorizontalFlip(p=0.5),
+            A.GaussianBlur(p=0.2),
             A.RandomBrightnessContrast(p=0.2),
             A.Normalize(),
             ToTensorV2()

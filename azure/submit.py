@@ -26,4 +26,3 @@ script_config = aml.ScriptRunConfig(
 )
 
 run = aml.Experiment(workspace=ws, name=experiment_name).submit(config=script_config)
-run.wait_for_completion(show_output=True)
